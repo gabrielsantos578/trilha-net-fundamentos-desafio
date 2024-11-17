@@ -1,66 +1,160 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
 namespace DesafioFundamentos.Models
 {
     public class Estacionamento
     {
-        private decimal precoInicial = 0;
-        private decimal precoPorHora = 0;
-        private List<string> veiculos = new List<string>();
+        private readonly List<Vaga> Vagas;
+        private readonly List<Veiculo> Veiculos;
 
-        public Estacionamento(decimal precoInicial, decimal precoPorHora)
+        public Estacionamento()
         {
-            this.precoInicial = precoInicial;
-            this.precoPorHora = precoPorHora;
+            Vagas = GerarVagasIniciais();
+            Veiculos = new List<Veiculo>();
         }
 
-        public void AdicionarVeiculo()
+        private static List<Vaga> GerarVagasIniciais()
         {
-            // TODO: Pedir para o usuário digitar uma placa (ReadLine) e adicionar na lista "veiculos"
-            // *IMPLEMENTE AQUI*
-            Console.WriteLine("Digite a placa do veículo para estacionar:");
-        }
-
-        public void RemoverVeiculo()
-        {
-            Console.WriteLine("Digite a placa do veículo para remover:");
-
-            // Pedir para o usuário digitar a placa e armazenar na variável placa
-            // *IMPLEMENTE AQUI*
-            string placa = "";
-
-            // Verifica se o veículo existe
-            if (veiculos.Any(x => x.ToUpper() == placa.ToUpper()))
+            var vagas = new List<Vaga>();
+            for (int i = 1; i <= 8; i++)
             {
-                Console.WriteLine("Digite a quantidade de horas que o veículo permaneceu estacionado:");
-
-                // TODO: Pedir para o usuário digitar a quantidade de horas que o veículo permaneceu estacionado,
-                // TODO: Realizar o seguinte cálculo: "precoInicial + precoPorHora * horas" para a variável valorTotal                
-                // *IMPLEMENTE AQUI*
-                int horas = 0;
-                decimal valorTotal = 0; 
-
-                // TODO: Remover a placa digitada da lista de veículos
-                // *IMPLEMENTE AQUI*
-
-                Console.WriteLine($"O veículo {placa} foi removido e o preço total foi de: R$ {valorTotal}");
+                string numeracao = $"V{i:D2}";
+                decimal precoInicial = 5.00m;
+                decimal precoHora = 2.00m;
+                vagas.Add(new Vaga(numeracao, precoInicial, precoHora));
             }
-            else
+            return vagas;
+        }
+
+        public void OcuparVaga()
+        {
+            while (true)
             {
-                Console.WriteLine("Desculpe, esse veículo não está estacionado aqui. Confira se digitou a placa corretamente");
+                Console.WriteLine("Informe a numeração da vaga onde irá estacionar:");
+                string numeracao = Console.ReadLine();
+
+                if (string.IsNullOrEmpty(numeracao))
+                {
+                    Console.WriteLine("A numeração da vaga é obrigatória!");
+                    continue;
+                }
+
+                var vaga = Vagas.FirstOrDefault(v => v.Numeracao == numeracao);
+                if (vaga == null)
+                {
+                    Console.WriteLine("A vaga informada não existe!");
+                    continue;
+                }
+
+                if (vaga.Ocupada)
+                {
+                    Console.WriteLine("A vaga já está ocupada!");
+                    continue;
+                }
+
+                Console.WriteLine("Informe a placa do veículo:");
+                string placa = Console.ReadLine();
+
+                if (string.IsNullOrEmpty(placa))
+                {
+                    Console.WriteLine("A placa do veículo é obrigatória!");
+                    continue;
+                }
+
+                var veiculo = Veiculos.FirstOrDefault(v => v.Placa.ToUpper() == placa.ToUpper());
+                if (veiculo != null && veiculo.Estacionado)
+                {
+                    Console.WriteLine("O veículo informado já está estacionado!");
+                    continue;
+                }
+
+                if (veiculo == null)
+                {
+                    veiculo = new Veiculo(placa.ToUpper());
+                    Veiculos.Add(veiculo);
+                }
+
+                veiculo.Estacionou();
+                var uso = new Uso(placa);
+                vaga.AdicionarUso(uso);
+
+                Console.WriteLine($"Veículo {placa.ToUpper()} estacionado na vaga {numeracao}.");
+                break;
+            }
+        }
+
+        public void DesocuparVaga()
+        {
+            while (true)
+            {
+                Console.WriteLine("Informe a numeração da vaga para desocupar:");
+                string numeracao = Console.ReadLine();
+
+                if (string.IsNullOrEmpty(numeracao))
+                {
+                    Console.WriteLine("A numeração da vaga é obrigatória!");
+                    continue;
+                }
+
+                var vaga = Vagas.FirstOrDefault(v => v.Numeracao == numeracao);
+                if (vaga == null)
+                {
+                    Console.WriteLine("A vaga informada não existe!");
+                    continue;
+                }
+
+                if (!vaga.Ocupada)
+                {
+                    Console.WriteLine("A vaga já está desocupada!");
+                    continue;
+                }
+
+                var uso = vaga.FinalizarUso();
+                var veiculo = Veiculos.FirstOrDefault(v => v.Placa == uso.PlacaVeiculo);
+                veiculo?.Saiu();
+
+                // Cálculo do preço
+                DateTime dataHoraInicio = DateTime.Parse($"{uso.DataOcupacao} {uso.HoraOcupacao}");
+                DateTime dataHoraFim = DateTime.Parse($"{uso.DataLiberacao} {uso.HoraLiberacao}");
+                TimeSpan duracao = dataHoraFim - dataHoraInicio;
+                decimal total = vaga.PrecoInicial + (vaga.PrecoHora * (decimal)duracao.TotalHours);
+
+                Console.WriteLine($"A vaga {numeracao} foi desocupada.");
+                Console.WriteLine($"Valor total: R$ {total:F2}");
+                break;
+            }
+        }
+
+        public void ListarVagas()
+        {
+            Console.WriteLine("Vagas disponíveis no estacionamento:");
+            foreach (var vaga in Vagas)
+            {
+                Console.WriteLine($"- Numeração: {vaga.Numeracao} | Ocupada: {(vaga.Ocupada ? "Sim" : "Não")}");
             }
         }
 
         public void ListarVeiculos()
         {
-            // Verifica se há veículos no estacionamento
-            if (veiculos.Any())
+            Console.WriteLine("Veículos no estacionamento:");
+            foreach (var veiculo in Veiculos)
             {
-                Console.WriteLine("Os veículos estacionados são:");
-                // TODO: Realizar um laço de repetição, exibindo os veículos estacionados
-                // *IMPLEMENTE AQUI*
+                Console.WriteLine($"- Placa: {veiculo.Placa} | Estacionado: {(veiculo.Estacionado ? "Sim" : "Não")}");
             }
-            else
+        }
+
+        public void ListarHistoricoUso()
+        {
+            Console.WriteLine("Histórico de uso das vagas:");
+            foreach (var vaga in Vagas)
             {
-                Console.WriteLine("Não há veículos estacionados.");
+                Console.WriteLine($"- Vaga {vaga.Numeracao} | Usos: {vaga.Usos.Count}");
+                foreach (var uso in vaga.Usos)
+                {
+                    Console.WriteLine($"  - Veículo: {uso.PlacaVeiculo} | Entrada: {uso.DataOcupacao} {uso.HoraOcupacao} | Saída: {uso.DataLiberacao} {uso.HoraLiberacao}");
+                }
             }
         }
     }
