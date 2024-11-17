@@ -17,16 +17,6 @@ namespace DesafioFundamentos.Models
             this.Usos = new List<Uso>();
         }
 
-        // Verifica se a vaga está ocupada com base no último uso
-        public bool EstaOcupada()
-        {
-            if (Usos.Count == 0)
-                return false;
-
-            var uso = this.Usos[0];
-            return string.IsNullOrEmpty(uso.HoraLiberacao);
-        }
-
         // Adiciona um novo uso à vaga e marca como ocupada
         public void AdicionarUso(Uso uso)
         {
